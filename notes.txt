@@ -106,3 +106,6 @@ scan: similar to Array.reduce but for observables
     // Justin Shah
     // Ramiya Shah
     // Ramiya Meyer
+
+    combineLatest: takes in Observables and returns an OperatorFunction that takes in the latest published values of any Observable and returns a value
+    

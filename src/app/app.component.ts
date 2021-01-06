@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 
-import { BehaviorSubject, MonoTypeOperatorFunction, Observable, merge, Subscription } from 'rxjs';
+import { BehaviorSubject, Observable, merge, Subscription, combineLatest } from 'rxjs';
 import { map, tap, scan } from 'rxjs/operators';
 
 interface ErrorMessageEvent {
@@ -78,6 +78,8 @@ export class AppComponent implements OnInit {
     public showCardNumberError!: Observable<boolean>;
     public showExpiryError!: Observable<boolean>;
     public showCVCError!: Observable<boolean>;
+
+    public isCardInvalid!: Observable<boolean>;
 
     public ngOnInit(): void {
         this._sub = new Subscription();// Used to collect subscriptions so we can unsubscribe them all later if needed
@@ -216,6 +218,10 @@ export class AppComponent implements OnInit {
         this.showCVCError = cvcState.pipe(map<InputState, boolean>(value => {
             return !!value.errorMessage && value.blurredOnce;
         }));
+
+        this.isCardInvalid = combineLatest([this.cardNumberError, this.expiryError, this.cvcError]).pipe(map(values => {
+            return values.some(showError => !!showError);
+        }))
     }
 
     public handleCardNumberInput(event: Event): void {

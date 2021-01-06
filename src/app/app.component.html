@@ -12,7 +12,7 @@
     <input type="text" name="cvc" placeholder="CVC" [class.error]="showCVCError | async" 
         (input)="handleCVCInput($event)" (blur)="cvcBlurredOnce.next(true)"/>
 
-    <button>
+    <button [disabled]="isCardInvalid | async">
         PAY
     </button>
 </form>
