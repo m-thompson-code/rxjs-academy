@@ -52,5 +52,6 @@ When this is problematic, we can try to use Subjects instead
 
 
 
-#RxJS in Angular
-
+map: takes in a function that takes in a value and returns an (rxjs) Operator (this is also known as OperatorFunction)
+pipe: takes in an OperatorFunction and returns an Observable where the return value of the OperatorFunction
+tap: takes in a function that takes in a value and returns an (rxjs) MonoTypeOperatorFunction. This will allow for sideeffects and will not behave like the rest of the OperatorFunctions would (unicast)

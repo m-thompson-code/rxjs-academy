@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { BehaviorSubject, MonoTypeOperatorFunction, Observable, Subject, Subscription } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
 
 const getCleanCardNumber = (cardNumber: string): string => {
     return (cardNumber || '').replace(/[\s-]/g, "");
@@ -13,6 +13,20 @@ const isEmpty = (value: any): boolean => {
 
 const hasLengthOf = (str: string, expectedLength: number): boolean => {
     return (str || '').length === expectedLength;
+}
+
+const log = (label: string): MonoTypeOperatorFunction<any> => {
+    return tap({
+        next: value => {
+            console.log('next', label, value);
+        },
+        error: err => {
+            console.log('error', label, err);
+        },
+        complete: () => {
+            console.log('complete', label);
+        }
+    });
 }
 
 @Component({
@@ -33,7 +47,8 @@ export class AppComponent implements OnInit {
 
         const mapCleanCardNumber = map(getCleanCardNumber);
 
-        this.cardNumber = this.userCardNumber.pipe(mapCleanCardNumber);
+        // Note that tap will execute 3 times (once for userCardNumber.pipe, once for cardError.pipe, once for the async pipe being used on the page)
+        this.cardNumber = this.userCardNumber.pipe(mapCleanCardNumber).pipe(log('number'));
 
         const mapCardError = map((cardNumber: string) => {
             if (isEmpty(cardNumber)) {
@@ -47,7 +62,7 @@ export class AppComponent implements OnInit {
             return '';
         });
 
-        this.cardError = this.userCardNumber.pipe(mapCardError);
+        this.cardError = this.cardNumber.pipe(mapCardError);
     }
 
     public handleFakeNumberInput(event: Event): void {
