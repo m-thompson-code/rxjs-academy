@@ -13,7 +13,7 @@ interface BlurredOnceEvent {
     value: boolean;
 }
 
-interface CombinedErrorMessageAndBlurredOnce {
+interface FakeNumberState {
     errorMessage: string;
     blurredOnce: boolean;
 }
@@ -98,7 +98,7 @@ export class AppComponent implements OnInit {
             }
         }));
 
-        const accumulator = (acc: CombinedErrorMessageAndBlurredOnce, current: ErrorMessageEvent | BlurredOnceEvent): CombinedErrorMessageAndBlurredOnce => {
+        const accumulator = (acc: FakeNumberState, current: ErrorMessageEvent | BlurredOnceEvent): FakeNumberState => {
             if (current.type === 'errorMessage') {
                 return {...acc, errorMessage: current.value};
             }
@@ -112,9 +112,9 @@ export class AppComponent implements OnInit {
 
         const seed = {errorMessage: '', blurredOnce: false};
 
-        const combinedErrorMessageAndBlurredOnce = merge(errorMessageEvent, blurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, CombinedErrorMessageAndBlurredOnce>(accumulator, seed));
+        const fakeNumberState = merge(errorMessageEvent, blurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, FakeNumberState>(accumulator, seed));
 
-        this.showCardError = combinedErrorMessageAndBlurredOnce.pipe(map<CombinedErrorMessageAndBlurredOnce, boolean>(value => {
+        this.showCardError = fakeNumberState.pipe(map<FakeNumberState, boolean>(value => {
             return !!value.errorMessage && value.blurredOnce;
         }));
     }
