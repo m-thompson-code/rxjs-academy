@@ -1,0 +1,56 @@
+Learn RxJS notes:
+
+#Basics
+
+observable.subscribe({
+  next: function(value){ ... },
+  error: function(error){ ... },
+  complete: function(){ ... },
+});
+
+//
+
+const observable = Observable.create(function (observer) {
+  observer.next(1);
+  setTimeout(() => {
+    observer.next(2);
+    observer.complete();
+  }, 1000);
+});
+
+console.log('just before subscribe');
+observable.subscribe({
+  next: x => console.log('got value ' + x),
+  complete: () => console.log('done')
+});
+console.log('just after subscribe');
+
+// Note that the 1 value is published synchronously
+
+// The following is logged:
+//   just before subscribe
+//   got value 1
+//   just after subscribe
+//   got value 2
+//   done
+
+new Observable<number>((observer) => {
+    const subscription = someExistingObservable.subscribe({
+        next: value => {...},
+    });
+
+    // This function gets called when this observable
+    // is unsubscribed.
+    // This is known as TeardownLogic (used on any messes we need to clean up when this observable is unsubscribed)
+    return () => {
+        subscription.unsubscribe();
+    };
+});
+
+Observables are unicast (each subscription owns an independent execution of the observable)
+When this is problematic, we can try to use Subjects instead
+
+
+
+#RxJS in Angular
+

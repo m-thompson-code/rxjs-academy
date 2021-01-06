@@ -1,1 +1,18 @@
-<h1>rxjs-academy app is running!</h1>
+<form autocomplete="off">
+    <div class="message"></div>
+
+    <input type="text" name="fakeNumber" placeholder="Fake Number"
+        (input)="handleFakeNumberInput($event)"/> 
+
+    <input type="text" name="expiry" placeholder="MM-YY"/>
+
+    <input type="text" name="cvc" placeholder="CVC"/>
+
+    <button>
+        PAY
+    </button>
+</form>
+
+<p>
+    UserCardNumber: {{ userCardNumber | async }}
+</p>
