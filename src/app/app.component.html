@@ -1,24 +1,18 @@
 <form autocomplete="off">
-    <div class="message" *ngIf="showCardError | async">CardError: {{ cardError | async }}</div>
+    <div class="message" *ngIf="showCardNumberError | async">CardError: {{ cardNumberError | async }}</div>
+    <div class="message" *ngIf="showExpiryError | async">CardError: {{ expiryError | async }}</div>
+    <div class="message" *ngIf="showCVCError | async">CardError: {{ cvcError | async }}</div>
 
-    <input type="text" name="fakeNumber" placeholder="Fake Number" [class.error]="showCardError | async" 
-        (input)="handleFakeNumberInput($event)" (blur)="fakeNumberBlurredOnce.next(true)"/> 
+    <input type="text" name="fakeNumber" placeholder="Fake Number" [class.error]="showCardNumberError | async" 
+        (input)="handleCardNumberInput($event)" (blur)="cardNumberBlurredOnce.next(true)"/> 
 
-    <input type="text" name="expiry" placeholder="MM-YY"/>
+    <input type="text" name="expiry" placeholder="MM-YY" [class.error]="showExpiryError | async" 
+        (input)="handleExpiryInput($event)" (blur)="expiryBlurredOnce.next(true)"/>
 
-    <input type="text" name="cvc" placeholder="CVC"/>
+    <input type="text" name="cvc" placeholder="CVC" [class.error]="showCVCError | async" 
+        (input)="handleCVCInput($event)" (blur)="cvcBlurredOnce.next(true)"/>
 
     <button>
         PAY
     </button>
 </form>
-
-<p>
-    UserCardNumber: {{ userCardNumber | async }}
-</p>
-<p>
-    CardNumber: {{ cardNumber | async }}
-</p>
-<p>
-    CardError: {{ cardError | async }}
-</p>
