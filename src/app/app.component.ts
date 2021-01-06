@@ -13,7 +13,7 @@ interface BlurredOnceEvent {
     value: boolean;
 }
 
-interface CardNumberState {
+interface InputState {
     errorMessage: string;
     blurredOnce: boolean;
 }
@@ -23,19 +23,8 @@ const getCleanCardNumber = (cardNumber: string): string => {
 }
 
 const getExpiryArray = (expiry: string): string[] => {
-    const _expiry = (expiry || '').replace(/[\s-]/g, "");
-
-    return [
-        _expiry.slice(0, 2),
-        _expiry.slice(2),
-    ];
+    return expiry.split('-');
 }
-
-// TODO: what makes a cvc clean
-const getCleanCVC = (cvc: string): string => {
-    return (cvc || '').replace(/[\s-]/g, "");
-}
-
 
 
 const isEmpty = (value: any): boolean => {
@@ -70,13 +59,13 @@ const hasLengthOf = (str: string, expectedLength: number): boolean => {
 export class AppComponent implements OnInit {
     private _sub!: Subscription;// Just for quick testing
 
-    public cardNumberBlurredOnce!: BehaviorSubject<boolean>;
-    public expiryBlurredOnce!: BehaviorSubject<boolean>;
-    public cvcBlurredOnce!: BehaviorSubject<boolean>;
+    public cardNumberBlurredOnce = new BehaviorSubject<boolean>(false);
+    public expiryBlurredOnce = new BehaviorSubject<boolean>(false);
+    public cvcBlurredOnce = new BehaviorSubject<boolean>(false);
 
-    public userCardNumber!: BehaviorSubject<string>;
-    public userExpiry!: BehaviorSubject<string>;
-    public userCVC!: BehaviorSubject<string>;
+    public userCardNumber = new BehaviorSubject<string>('');
+    public userExpiry = new BehaviorSubject<string>('');
+    public userCVC = new BehaviorSubject<string>('');
 
     public cardNumber!: Observable<string>;
     public expiry!: Observable<string[]>;
@@ -93,27 +82,14 @@ export class AppComponent implements OnInit {
     public ngOnInit(): void {
         this._sub = new Subscription();// Used to collect subscriptions so we can unsubscribe them all later if needed
 
-        this.cardNumberBlurredOnce = new BehaviorSubject<boolean>(false);
-        this.expiryBlurredOnce = new BehaviorSubject<boolean>(false);
-        this.cvcBlurredOnce = new BehaviorSubject<boolean>(false);
-
-
-
-        this.userCardNumber = new BehaviorSubject<string>('');
-        this.userExpiry = new BehaviorSubject<string>('');
-        this.userCVC = new BehaviorSubject<string>('');
-
-
-
         const mapCleanCardNumber = map(getCleanCardNumber);
         this.cardNumber = this.userCardNumber.pipe(mapCleanCardNumber);
 
         const mapExpiryArray = map(getExpiryArray);
         this.expiry = this.userExpiry.pipe(mapExpiryArray);
 
-        const mapCleanCVC = map(getCleanCVC);
-        this.cvc = this.userCVC.pipe(mapCleanCVC);
-
+        // No clean up on cvc, just going to make reference to userCVC Observable
+        this.cvc = this.userCVC;
 
 
         const mapCardNumberError = map((cardNumber: string) => {
@@ -133,7 +109,7 @@ export class AppComponent implements OnInit {
                 return 'There is no expiry. Format  MM-YY';
             }
 
-            if (!hasLengthOf(expiry[0], 2) || !hasLengthOf(expiry[1], 2)) {
+            if (expiry.length !== 2 || !hasLengthOf(expiry[0], 2) || !hasLengthOf(expiry[1], 2)) {
                 return 'Expiry must be formatted like MM-YY';
             }
 
@@ -163,6 +139,22 @@ export class AppComponent implements OnInit {
 
 
 
+        // accumulator and seed is shared between cardNumber, expiry, and cvc
+        const accumulator = (acc: InputState, current: ErrorMessageEvent | BlurredOnceEvent): InputState => {
+            if (current.type === 'errorMessage') {
+                return {...acc, errorMessage: current.value};
+            }
+
+            if (current.type === 'blurredOnce') {
+                return {...acc, blurredOnce: current.value};
+            }
+
+            return acc;
+        }
+
+        const seed = {errorMessage: '', blurredOnce: false};
+
+
         const cardNumberErrorMessageEvent = this.cardNumberError.pipe(map<string, ErrorMessageEvent>(errorMessage => {
             return {
                 type: 'errorMessage',
@@ -177,23 +169,9 @@ export class AppComponent implements OnInit {
             }
         }));
 
-        const cardNumberAccumulator = (acc: CardNumberState, current: ErrorMessageEvent | BlurredOnceEvent): CardNumberState => {
-            if (current.type === 'errorMessage') {
-                return {...acc, errorMessage: current.value};
-            }
+        const cardNumberState = merge(cardNumberErrorMessageEvent, cardNumberBlurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, InputState>(accumulator, seed));
 
-            if (current.type === 'blurredOnce') {
-                return {...acc, blurredOnce: current.value};
-            }
-
-            return acc;
-        }
-
-        const cardNumberSeed = {errorMessage: '', blurredOnce: false};
-
-        const cardNumberState = merge(cardNumberErrorMessageEvent, cardNumberBlurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, CardNumberState>(cardNumberAccumulator, cardNumberSeed));
-
-        this.showCardNumberError = cardNumberState.pipe(map<CardNumberState, boolean>(value => {
+        this.showCardNumberError = cardNumberState.pipe(map<InputState, boolean>(value => {
             return !!value.errorMessage && value.blurredOnce;
         }));
 
@@ -212,23 +190,9 @@ export class AppComponent implements OnInit {
             }
         }));
 
-        // const expiryAccumulator = (acc: CardNumberState, current: ErrorMessageEvent | BlurredOnceEvent): CardNumberState => {
-        //     if (current.type === 'errorMessage') {
-        //         return {...acc, errorMessage: current.value};
-        //     }
+        const expiryState = merge(expiryErrorMessageEvent, expiryBlurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, InputState>(accumulator, seed));
 
-        //     if (current.type === 'blurredOnce') {
-        //         return {...acc, blurredOnce: current.value};
-        //     }
-
-        //     return acc;
-        // }
-
-        // const expirySeed = {errorMessage: '', blurredOnce: false};
-
-        const expiryState = merge(expiryErrorMessageEvent, expiryBlurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, CardNumberState>(cardNumberAccumulator, cardNumberSeed));
-
-        this.showExpiryError = expiryState.pipe(map<CardNumberState, boolean>(value => {
+        this.showExpiryError = expiryState.pipe(map<InputState, boolean>(value => {
             return !!value.errorMessage && value.blurredOnce;
         }));
 
@@ -247,23 +211,9 @@ export class AppComponent implements OnInit {
             }
         }));
 
-        // const cvcAccumulator = (acc: CardNumberState, current: ErrorMessageEvent | BlurredOnceEvent): CardNumberState => {
-        //     if (current.type === 'errorMessage') {
-        //         return {...acc, errorMessage: current.value};
-        //     }
+        const cvcState = merge(cvcErrorMessageEvent, cvcBlurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, InputState>(accumulator, seed));
 
-        //     if (current.type === 'blurredOnce') {
-        //         return {...acc, blurredOnce: current.value};
-        //     }
-
-        //     return acc;
-        // }
-
-        // const cvcSeed = {errorMessage: '', blurredOnce: false};
-
-        const cvcState = merge(cvcErrorMessageEvent, cvcBlurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, CardNumberState>(cardNumberAccumulator, cardNumberSeed));
-
-        this.showCVCError = cvcState.pipe(map<CardNumberState, boolean>(value => {
+        this.showCVCError = cvcState.pipe(map<InputState, boolean>(value => {
             return !!value.errorMessage && value.blurredOnce;
         }));
     }
