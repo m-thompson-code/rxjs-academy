@@ -15,8 +15,8 @@ export class AppComponent implements OnInit {
     }
 
     public handleFakeNumberInput(event: Event): void {
-        const _target = event.target as HTMLInputElement;
-        this.userCardNumber.next( _target.value || '' );
+        const _target = event.target as HTMLInputElement | null;
+        this.userCardNumber.next( _target?.value || '' );
     }
 
     public ngOnDestroy(): void {
