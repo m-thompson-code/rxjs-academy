@@ -1,8 +1,8 @@
 <form autocomplete="off">
-    <div class="message">CardError: {{ cardError | async }}</div>
+    <div class="message" *ngIf="showCardError | async">CardError: {{ cardError | async }}</div>
 
-    <input type="text" name="fakeNumber" placeholder="Fake Number"
-        (input)="handleFakeNumberInput($event)"/> 
+    <input type="text" name="fakeNumber" placeholder="Fake Number" [class.error]="showCardError | async" 
+        (input)="handleFakeNumberInput($event)" (blur)="fakeNumberBlurredOnce.next(true)"/> 
 
     <input type="text" name="expiry" placeholder="MM-YY"/>
 

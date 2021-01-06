@@ -2,50 +2,49 @@ Learn RxJS notes:
 
 #Basics
 
+// subscribing to an observable using PartialObserver instead of passing next, error, complete function arguments
 observable.subscribe({
   next: function(value){ ... },
   error: function(error){ ... },
   complete: function(){ ... },
 });
 
-//
-
-const observable = Observable.create(function (observer) {
-  observer.next(1);
-  setTimeout(() => {
-    observer.next(2);
-    observer.complete();
-  }, 1000);
-});
-
-console.log('just before subscribe');
-observable.subscribe({
-  next: x => console.log('got value ' + x),
-  complete: () => console.log('done')
-});
-console.log('just after subscribe');
-
-// Note that the 1 value is published synchronously
-
-// The following is logged:
-//   just before subscribe
-//   got value 1
-//   just after subscribe
-//   got value 2
-//   done
-
-new Observable<number>((observer) => {
-    const subscription = someExistingObservable.subscribe({
-        next: value => {...},
+    const observable = Observable.create(function (observer) {
+    observer.next(1);
+    setTimeout(() => {
+        observer.next(2);
+        observer.complete();
+    }, 1000);
     });
 
-    // This function gets called when this observable
-    // is unsubscribed.
-    // This is known as TeardownLogic (used on any messes we need to clean up when this observable is unsubscribed)
-    return () => {
-        subscription.unsubscribe();
-    };
-});
+    console.log('just before subscribe');
+    observable.subscribe({
+    next: x => console.log('got value ' + x),
+    complete: () => console.log('done')
+    });
+    console.log('just after subscribe');
+
+    // Note that the 1 value is published synchronously
+
+    // The following is logged:
+    //   just before subscribe
+    //   got value 1
+    //   just after subscribe
+    //   got value 2
+    //   done
+
+    new Observable<number>((observer) => {
+        const subscription = someExistingObservable.subscribe({
+            next: value => {...},
+        });
+
+        // This function gets called when this observable
+        // is unsubscribed.
+        // This is known as TeardownLogic (used on any messes we need to clean up when this observable is unsubscribed)
+        return () => {
+            subscription.unsubscribe();
+        };
+    });
 
 Observables are unicast (each subscription owns an independent execution of the observable)
 When this is problematic, we can try to use Subjects instead
@@ -54,4 +53,56 @@ When this is problematic, we can try to use Subjects instead
 
 map: takes in a function that takes in a value and returns an (rxjs) Operator (this is also known as OperatorFunction)
 pipe: takes in an OperatorFunction and returns an Observable where the return value of the OperatorFunction
+
 tap: takes in a function that takes in a value and returns an (rxjs) MonoTypeOperatorFunction. This will allow for sideeffects and will not behave like the rest of the OperatorFunctions would (unicast)
+
+merge: takes in Observables and will return an Observable that will publish values whenever the input Observables publish
+
+scan: similar to Array.reduce but for observables
+
+    const ob1 = new Observable(observer => {
+        observer.next('Justin');
+        setTimeout(() => {
+            observer.next('Ramiya');
+        }, 1000);
+    }).pipe(map(first => {
+        return {
+            type: 'first',
+            value: first,
+        };
+    }));
+
+    const ob2 = new Observable(observer => {
+        setTimeout(() => {
+            observer.next('Shah');
+        }, 500);
+        setTimeout(() => {
+            observer.next('Meyer');
+        }, 1000);
+    }).pipe(map(last => {
+        return {
+            type: 'last',
+            value: last,
+        };
+    }));
+
+    const accumulator = (acc: {first: unknown, last: unknown}, current: {type: string, value: unknown}) => {
+        if (current.type === 'first') {
+            return {...acc, first: current.value};
+        }
+
+        if (current.type === 'last') {
+            return {...acc, last: current.value};
+        }
+
+        return acc;
+    }
+
+    merge(ob1, ob2).pipe(scan(accumulator, {first: '<default first>', last: '<default last>'})).pipe(map(obj => obj.first + ' ' + obj.last)).subscribe(x => {
+        console.log(x);
+    });
+
+    // Justin <default last>
+    // Justin Shah
+    // Ramiya Shah
+    // Ramiya Meyer

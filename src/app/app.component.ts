@@ -1,7 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 
-import { BehaviorSubject, MonoTypeOperatorFunction, Observable, Subject, Subscription } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { BehaviorSubject, MonoTypeOperatorFunction, Observable, merge, Subscription } from 'rxjs';
+import { map, tap, scan } from 'rxjs/operators';
+
+interface ErrorMessageEvent {
+    type: 'errorMessage';
+    value: string;
+}
+
+interface BlurredOnceEvent {
+    type: 'blurredOnce';
+    value: boolean;
+}
+
+interface CombinedErrorMessageAndBlurredOnce {
+    errorMessage: string;
+    blurredOnce: boolean;
+}
 
 const getCleanCardNumber = (cardNumber: string): string => {
     return (cardNumber || '').replace(/[\s-]/g, "");
@@ -40,8 +55,13 @@ export class AppComponent implements OnInit {
     public cardError!: Observable<string>;
     private _sub!: Subscription;
 
+    public fakeNumberBlurredOnce!: BehaviorSubject<boolean>;
+    public showCardError!: Observable<boolean>;
+
     public ngOnInit(): void {
-        this._sub = new Subscription();
+        this._sub = new Subscription();// Used to collect subscriptions so we can unsubscribe them all later if needed
+
+        this.fakeNumberBlurredOnce = new BehaviorSubject<boolean>(false);
 
         this.userCardNumber = new BehaviorSubject<string>('');
 
@@ -63,6 +83,40 @@ export class AppComponent implements OnInit {
         });
 
         this.cardError = this.cardNumber.pipe(mapCardError);
+
+        const errorMessageEvent = this.cardError.pipe(map<string, ErrorMessageEvent>(errorMessage => {
+            return {
+                type: 'errorMessage',
+                value: errorMessage,
+            };
+        }));
+
+        const blurredOnceEvent = this.fakeNumberBlurredOnce.pipe(map<boolean, BlurredOnceEvent>(blurredOnce => {
+            return {
+                type: 'blurredOnce',
+                value: blurredOnce,
+            }
+        }));
+
+        const accumulator = (acc: CombinedErrorMessageAndBlurredOnce, current: ErrorMessageEvent | BlurredOnceEvent): CombinedErrorMessageAndBlurredOnce => {
+            if (current.type === 'errorMessage') {
+                return {...acc, errorMessage: current.value};
+            }
+
+            if (current.type === 'blurredOnce') {
+                return {...acc, blurredOnce: current.value};
+            }
+
+            return acc;
+        }
+
+        const seed = {errorMessage: '', blurredOnce: false};
+
+        const combinedErrorMessageAndBlurredOnce = merge(errorMessageEvent, blurredOnceEvent).pipe(scan<ErrorMessageEvent | BlurredOnceEvent, CombinedErrorMessageAndBlurredOnce>(accumulator, seed));
+
+        this.showCardError = combinedErrorMessageAndBlurredOnce.pipe(map<CombinedErrorMessageAndBlurredOnce, boolean>(value => {
+            return !!value.errorMessage && value.blurredOnce;
+        }));
     }
 
     public handleFakeNumberInput(event: Event): void {
