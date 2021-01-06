@@ -1,5 +1,5 @@
 <form autocomplete="off">
-    <div class="message"></div>
+    <div class="message">CardError: {{ cardError | async }}</div>
 
     <input type="text" name="fakeNumber" placeholder="Fake Number"
         (input)="handleFakeNumberInput($event)"/> 
@@ -18,4 +18,7 @@
 </p>
 <p>
     CardNumber: {{ cardNumber | async }}
+</p>
+<p>
+    CardError: {{ cardError | async }}
 </p>

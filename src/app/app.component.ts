@@ -7,6 +7,14 @@ const getCleanCardNumber = (cardNumber: string): string => {
     return (cardNumber || '').replace(/[\s-]/g, "");
 }
 
+const isEmpty = (value: any): boolean => {
+    return !value;
+}
+
+const hasLengthOf = (str: string, expectedLength: number): boolean => {
+    return (str || '').length === expectedLength;
+}
+
 @Component({
     selector: 'moo-root',
     templateUrl: './app.component.html',
@@ -15,6 +23,7 @@ const getCleanCardNumber = (cardNumber: string): string => {
 export class AppComponent implements OnInit {
     public userCardNumber!: BehaviorSubject<string>;
     public cardNumber!: Observable<string>;
+    public cardError!: Observable<string>;
     private _sub!: Subscription;
 
     public ngOnInit(): void {
@@ -22,9 +31,23 @@ export class AppComponent implements OnInit {
 
         this.userCardNumber = new BehaviorSubject<string>('');
 
-        const mapToCleanCardNumber = map(getCleanCardNumber);
+        const mapCleanCardNumber = map(getCleanCardNumber);
 
-        this.cardNumber = this.userCardNumber.pipe(mapToCleanCardNumber);
+        this.cardNumber = this.userCardNumber.pipe(mapCleanCardNumber);
+
+        const mapCardError = map((cardNumber: string) => {
+            if (isEmpty(cardNumber)) {
+                return 'user has not entered a card';
+            }
+
+            if (!hasLengthOf(cardNumber, 16)) {
+                return 'the card number is not 16 digits';
+            }
+
+            return '';
+        });
+
+        this.cardError = this.userCardNumber.pipe(mapCardError);
     }
 
     public handleFakeNumberInput(event: Event): void {
