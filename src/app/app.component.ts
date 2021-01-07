@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { resolve } from 'dns';
 
-import { BehaviorSubject, Observable, merge, Subscription, combineLatest } from 'rxjs';
-import { map, tap, scan, withLatestFrom } from 'rxjs/operators';
+import { BehaviorSubject, Observable, merge, Subscription, combineLatest, of, from, concat, Subject } from 'rxjs';
+import { map, tap, scan, withLatestFrom, mergeAll, startWith, endWith } from 'rxjs/operators';
 
 interface ErrorMessageEvent {
     type: 'errorMessage';
@@ -17,6 +17,28 @@ interface BlurredOnceEvent {
 interface InputState {
     errorMessage: string;
     blurredOnce: boolean;
+}
+
+// interface _UnresolvedPaymentStatus {
+//     status: "waiting" | "pending";
+//     value?: never;
+// }
+
+// interface _ResolvedPaymentStatus {
+//     status: "resolved";
+//     value: number;
+// }
+
+// interface _PaymentStatus {
+//     status: "waiting" | "pending" | "resolved",
+//     value?: number;
+// }
+
+// type PaymentStatus = _PaymentStatus & (_UnresolvedPaymentStatus | _ResolvedPaymentStatus);
+
+interface PaymentStatus {
+    status: string;
+    value?: number;
 }
 
 const getCleanCardNumber = (cardNumber: string): string => {
@@ -82,7 +104,12 @@ export class AppComponent implements OnInit {
 
     public isCardInvalid!: Observable<boolean>;
 
-    public paySubmitted = new BehaviorSubject<boolean>(false);
+    public paySubmitted = new Subject<boolean>();
+
+    public paymentStatus!: Observable<PaymentStatus>;
+    // public paymentStatus = new BehaviorSubject<PaymentStatus>({
+    //     status: 'waiting',
+    // });
 
     public ngOnInit(): void {
         this._sub = new Subscription();// Used to collect subscriptions so we can unsubscribe them all later if needed
@@ -235,7 +262,7 @@ export class AppComponent implements OnInit {
             ]);
         };
 
-        const paymentPromises = (paySubmitted: BehaviorSubject<boolean>, card: Observable<any>) => {
+        const paymentPromises = (paySubmitted: Subject<boolean>, card: Observable<[string, string[], string]>) => {
             return paySubmitted.pipe(withLatestFrom(card)).pipe(map(_card => {
                 console.log("Asking for token with", _card);
 
@@ -251,11 +278,45 @@ export class AppComponent implements OnInit {
 
         const payments: Observable<Promise<number>> = paymentPromises(this.paySubmitted, card);
 
-        this._sub.add(payments.subscribe(paymentPromise => {
-            paymentPromise.then(() => {
-                console.log("payment complete!");
+        const paymentStatusObservables = payments.pipe(map<Promise<number>, Observable<PaymentStatus>>(paymentPromise => {
+            const pendingObservable: Observable<PaymentStatus> = of({
+                status: "pending",
             });
-        }));
+
+            const resolveObservable = from(paymentPromise).pipe(map<number, PaymentStatus>(resolveValue => {
+                console.log("resolved promise!");
+                
+                return {
+                    status: "resolved",
+                    value: resolveValue,
+                };
+            }));
+
+            return concat(
+                pendingObservable, 
+                resolveObservable,
+            );
+        }), startWith(of({
+            status: "waiting"
+        })));
+
+        // Flatten the Observables into paymentStatus
+        this.paymentStatus = paymentStatusObservables.pipe(mergeAll());
+
+        // this._sub.add(payments.subscribe(paymentPromise => {
+        //     // this.paymentStatus.next({
+        //     //     status: "pending",
+        //     // });
+
+        //     paymentPromise.then(resolvedValue => {
+        //         console.log("payment complete!");
+
+        //         // this.paymentStatus.next({
+        //         //     status: "resolved",
+        //         //     value: resolvedValue,
+        //         // });
+        //     });
+        // }));
     }
 
     public handleCardNumberInput(event: Event): void {

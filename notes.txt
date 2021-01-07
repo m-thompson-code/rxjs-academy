@@ -107,5 +107,36 @@ scan: similar to Array.reduce but for observables
     // Ramiya Shah
     // Ramiya Meyer
 
-    combineLatest: takes in Observables and returns an OperatorFunction that takes in the latest published values of any Observable and returns a value
+combineLatest: takes in Observables and returns an OperatorFunction that takes in the latest published values of any Observable and returns a value
     
+    const paymentStatusObservables = payments.pipe(map<Promise<number>, Observable<PaymentStatus>>(paymentPromise => {
+        const pendingObservable: Observable<PaymentStatus> = of({
+            status: "pending",
+        });
+
+        const resolveObservable = from(paymentPromise).pipe(map<number, PaymentStatus>(resolveValue => {
+            return {
+                status: "resolved",
+                value: resolveValue,
+            };
+        }));
+
+        return concat(
+            pendingObservable, 
+            resolveObservable,
+        );
+    }), startWith(of({
+        status: "waiting"
+    })));
+
+    // Flatten the Observables into paymentStatus
+    this.paymentStatus = paymentStatusObservables.pipe(mergeAll());
+
+    // Why do we have to flatten higher order Observables? Why can't we just have a single order of Observables?
+
+    // This is because we have to convert the promise to an Observable (forcing a situation where we are using high order Observables)
+    // We could maybe avoid this pattern by using Subjects and 
+    
+of: Function with any valued arguments that returns an Observable that publishes the values of the argument of this function
+from: Function with a Promise as its argument that returns an Observable that publishes the resolved value of that promise 
+concat: Function with Observables as arguments that returns an Observable that publishes the values of its arguments

@@ -13,6 +13,10 @@
         (input)="handleCVCInput($event)" (blur)="cvcBlurredOnce.next(true)"/>
 
     <button [disabled]="isCardInvalid | async">
-        PAY
+        {{ ( (paymentStatus | async)?.status === "pending" ) ? "Paying" : "Pay" }}
     </button>
 </form>
+<!-- 
+<p>
+    {{ paymentStatus | async | json }}
+</p> -->
