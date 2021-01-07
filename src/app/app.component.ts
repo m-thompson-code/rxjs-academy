@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { resolve } from 'dns';
 
 import { BehaviorSubject, Observable, merge, Subscription, combineLatest } from 'rxjs';
-import { map, tap, scan } from 'rxjs/operators';
+import { map, tap, scan, withLatestFrom } from 'rxjs/operators';
 
 interface ErrorMessageEvent {
     type: 'errorMessage';
@@ -57,7 +58,7 @@ const hasLengthOf = (str: string, expectedLength: number): boolean => {
     styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
-    private _sub!: Subscription;// Just for quick testing
+    private _sub!: Subscription;
 
     public cardNumberBlurredOnce = new BehaviorSubject<boolean>(false);
     public expiryBlurredOnce = new BehaviorSubject<boolean>(false);
@@ -80,6 +81,8 @@ export class AppComponent implements OnInit {
     public showCVCError!: Observable<boolean>;
 
     public isCardInvalid!: Observable<boolean>;
+
+    public paySubmitted = new BehaviorSubject<boolean>(false);
 
     public ngOnInit(): void {
         this._sub = new Subscription();// Used to collect subscriptions so we can unsubscribe them all later if needed
@@ -221,7 +224,38 @@ export class AppComponent implements OnInit {
 
         this.isCardInvalid = combineLatest([this.cardNumberError, this.expiryError, this.cvcError]).pipe(map(values => {
             return values.some(showError => !!showError);
-        }))
+        }));
+
+        const combineCard = (cardNumber: Observable<string>, expiry: Observable<string[]>, cvc: Observable<string>) => {
+            return combineLatest([
+                cardNumber, 
+                expiry, 
+                cvc, 
+                // (cardNumber: Observable<string>, expiry: Observable<string[]>, cvc: Observable<string>)=>{cardNumber, expiry, cvc},
+            ]);
+        };
+
+        const paymentPromises = (paySubmitted: BehaviorSubject<boolean>, card: Observable<any>) => {
+            return paySubmitted.pipe(withLatestFrom(card)).pipe(map(_card => {
+                console.log("Asking for token with", _card);
+
+                return new Promise<number>(resolve => {
+                    setTimeout(() => {
+                        resolve(1000);
+                    }, 2000);
+                });
+            }));
+        };
+
+        const card = combineCard(this.cardNumber, this.expiry, this.cvc);
+
+        const payments: Observable<Promise<number>> = paymentPromises(this.paySubmitted, card);
+
+        this._sub.add(payments.subscribe(paymentPromise => {
+            paymentPromise.then(() => {
+                console.log("payment complete!");
+            });
+        }));
     }
 
     public handleCardNumberInput(event: Event): void {
@@ -237,6 +271,11 @@ export class AppComponent implements OnInit {
     public handleCVCInput(event: Event): void {
         const _target = event.target as HTMLInputElement | null;
         this.userCVC.next( _target?.value || '' );
+    }
+
+    public pay(event: Event): void {
+        event.preventDefault();
+        this.paySubmitted.next(true);
     }
 
     public ngOnDestroy(): void {

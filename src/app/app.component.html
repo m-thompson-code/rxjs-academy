@@ -1,4 +1,4 @@
-<form autocomplete="off">
+<form autocomplete="off" (submit)="pay($event)">
     <div class="message" *ngIf="showCardNumberError | async">CardError: {{ cardNumberError | async }}</div>
     <div class="message" *ngIf="showExpiryError | async">CardError: {{ expiryError | async }}</div>
     <div class="message" *ngIf="showCVCError | async">CardError: {{ cvcError | async }}</div>
